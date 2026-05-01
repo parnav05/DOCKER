@@ -1,0 +1,22 @@
+FROM node:latest AS builder
+
+WORKDIR  /app
+
+COPY package.json .
+
+RUN npm install
+
+COPY . .
+
+FROM gcr.io/distroless/nodejs22-debian13
+
+WORKDIR /app
+
+COPY --from=builder /app /app 
+
+
+
+EXPOSE 3000
+
+CMD [ "app.js"]
+
