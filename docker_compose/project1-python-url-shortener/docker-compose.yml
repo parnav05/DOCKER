@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: url_shortener_app
+    ports:
+      - "8000:8000"
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    networks:
+      - url_net
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: url_shortener_postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - url_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: url_shortener_redis
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - url_net
+
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: url_shortener_pgadmin
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - "5050:80"
+    depends_on:
+      - postgres
+    networks:
+      - url_net
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  url_net:
+    driver: bridge
