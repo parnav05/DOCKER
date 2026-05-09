@@ -1,70 +1,62 @@
-version: "3.9"
-
 services:
-  app:
-    build: .
-    container_name: url_shortener_app
-    ports:
-      - "8000:8000"
-    env_file: .env
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-    volumes:
-      - .:/app
-    networks:
-      - url_net
-    restart: unless-stopped
+    myapp:
+      build: .
+      container_name: myapp1
+      ports:
+        -8080:8080
+      restart: always
+      volume:
+        my_app_volume: /app 
+      enviroment:
+      depends_on:
+        - PostgreSQL
+        - Redis
+      networks:
+        mynetw:
+    PostgreSQL:
+      image: postgres:16-alpine
+      container_name: myapp1
+      restart: always
+      port: 
+        - 5432:5432
+      enviroment:
+        POSTGRES_USER: ${ urluser }
+        POSTGRES_PASSWORD: ${ urlpass }
+        POSTGRES_DB: ${ urldb }
 
-  postgres:
-    image: postgres:16-alpine
-    container_name: url_shortener_postgres
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
-      POSTGRES_DB: ${POSTGRES_DB}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - url_net
+      healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U urluser -d urldb"]
+        interval: 10s
+        timeout: 3s
+        retries: 3
+      volumes:
+        my_app_volume: /var/lib/postgresql/data/
 
-  redis:
-    image: redis:7-alpine
-    container_name: url_shortener_redis
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-    networks:
-      - url_net
+      networks:
+        mynetw:
 
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: url_shortener_pgadmin
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
-    depends_on:
-      - postgres
-    networks:
-      - url_net
+      
+    Redis:
+      image: postgres:16-alpine
+      container_name: myapp1
+      ports:
+        - 6379:6379
+      volumes:
+        my_app_volume
+      healthcheck:
+        test: ["CMD", "redis-cli", "ping"]
+        interval: 10s
+        timeout: 5s
+        retries: 5
+
+
+    pgAdmin:
+
+
 
 volumes:
-  postgres_data:
-  redis_data:
+  my_app_volume:
+
 
 networks:
-  url_net:
-    driver: bridge
+  mynetw:
