@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: chat_app
+    env_file: .env
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    volumes:
+      - ./server:/app/server
+    networks:
+      - chat_net
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:alpine
+    container_name: chat_nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./frontend:/usr/share/nginx/html:ro
+    depends_on:
+      - app
+    networks:
+      - chat_net
+    restart: unless-stopped
+
+  mongo:
+    image: mongo:7
+    container_name: chat_mongo
+    volumes:
+      - mongo_data:/data/db
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - chat_net
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: chat_rabbitmq
+    ports:
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+    networks:
+      - chat_net
+
+volumes:
+  mongo_data:
+  rabbitmq_data:
+
+networks:
+  chat_net:
+    driver: bridge
